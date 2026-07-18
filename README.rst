@@ -47,6 +47,10 @@ Features
     - unlink
     - links
 
+- API for registry (`registry:login`, `registry:set`)
+    - login
+    - set
+
 
 Examples
 --------
@@ -62,6 +66,16 @@ Stopping a application ::
 Connecting on a non-default SSH port ::
 
     dokku = dokkupy.Dokku('dokku@mydokkuhost.net', ssh_port=2222)
+
+
+Logging into a Docker registry ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    dokku.registry.login(
+        'registry.gitlab.com', 'gitlab-ci-token', 'password', global_=True,
+    )
+    dokku.registry.set('server', 'registry.gitlab.com', app='myapp')
+    dokku.registry.set('image-repo', 'group/project', app='myapp')
 
 
 Creating a postgres database ::
@@ -81,6 +95,18 @@ Deploying with cli ::
 
     $ cat config-example.json
     {
+      "registry": {
+        "login": {
+          "global": true,
+          "server": "registry.gitlab.com",
+          "username": "gitlab-ci-token",
+          "password": {"env": "CI_REGISTRY_PASSWORD"}
+        },
+        "set": {
+          "server": "registry.gitlab.com",
+          "image-repo": "group/project"
+        }
+      },
       "services": [
         {
           "name": "postgres",
