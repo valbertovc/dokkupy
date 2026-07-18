@@ -59,6 +59,11 @@ Stopping a application ::
     first_app.stop()
 
 
+Connecting on a non-default SSH port ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net', ssh_port=2222)
+
+
 Creating a postgres database ::
 
     dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
@@ -90,3 +95,4 @@ Deploying with cli ::
     }
     $ cd <project path>
     $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net deploy
+    $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net --ssh-port 2222 deploy

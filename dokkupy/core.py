@@ -107,12 +107,22 @@ class Command(object):
 
 
 class Dokku(Command):
-    def __init__(self, hostname=None):
+    def __init__(self, hostname=None, ssh_port=22):
         if hostname:
-            cmd = ['ssh', '-t', '-t', hostname]
+            if not isinstance(ssh_port, int) or not (1 <= ssh_port <= 65535):
+                raise ValueError(
+                    'ssh_port must be an integer between 1 and 65535'
+                )
+            cmd = ['ssh', '-t', '-t']
+            if ssh_port != 22:
+                cmd.extend(['-p', str(ssh_port)])
+            cmd.append(hostname)
             self.hostname = hostname
+            self.ssh_port = ssh_port
         else:
             cmd = ['dokku']
+            self.hostname = None
+            self.ssh_port = ssh_port
         super(Dokku, self).__init__(*cmd)
 
     def _list(self):
@@ -233,6 +243,15 @@ class Dokku(Command):
             return self.hostname.split('@')[1]
         return self.hostname
 
+    def git_remote_url(self, app_name):
+        if self.ssh_port == 22:
+            return '{}:{}'.format(self.hostname, app_name)
+        return 'ssh://{}:{}/{}'.format(
+            self.hostname,
+            self.ssh_port,
+            app_name,
+        )
+
 
 class App(object):
     def __init__(self, name, dokku):
@@ -345,7 +364,7 @@ class App(object):
         repo = Repo(project_path)
 
         if not remote_url:
-            remote_url = self.dokku.hostname + ':' + self.name
+            remote_url = self.dokku.git_remote_url(self.name)
         if remote_name not in [r.name for r in repo.remotes]:
             remote = repo.create_remote(remote_name, remote_url)
         else:
