@@ -54,6 +54,9 @@ Features
 - API for builder (`builder:set`)
     - set
 
+- API for deployment (`git:from-image`)
+    - from_image
+
 
 Examples
 --------
@@ -88,6 +91,13 @@ Setting the builder for an app ::
     app.builder.set('selected', 'dockerfile')
 
 
+Deploying from a Docker image ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    app = dokku['myapp']
+    app.git.from_image('registry.gitlab.com/group/project:tag')
+
+
 Creating a postgres database ::
 
     dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
@@ -120,6 +130,12 @@ Deploying with cli ::
       "builder": {
         "set": {
           "selected": "dockerfile"
+        }
+      },
+      "deployment": {
+        "method": "image",
+        "image": {
+          "from": "registry.gitlab.com/group/project:tag"
         }
       },
       "services": [

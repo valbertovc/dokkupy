@@ -27,6 +27,7 @@ from git import Repo, RemoteProgress
 
 from dokkupy.plugins.registry import Registry
 from dokkupy.plugins.builder import Builder
+from dokkupy.plugins.git import Git
 
 
 def safe_log(command):
@@ -202,7 +203,14 @@ class Dokku(Command):
             if set_config:
                 app.builder.apply_config(set_config)
 
-        app.deploy(project_path=config.get('path'), current_branch=config.get('current_branch', False))
+        deployment_config = config.get('deployment', {})
+        if deployment_config.get('method') == 'image':
+            app.git.apply_config(deployment_config)
+        else:
+            app.deploy(
+                project_path=config.get('path'),
+                current_branch=config.get('current_branch', False),
+            )
 
         generate_cert = config.get('generate_cert', False)
         if generate_cert:
@@ -272,6 +280,7 @@ class App(object):
         self.name = name
         self.dokku = dokku
         self.builder = Builder(self)
+        self.git = Git(self)
 
     def create(self):
         self.dokku.run('apps:create', self.name)
