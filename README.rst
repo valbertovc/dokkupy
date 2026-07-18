@@ -57,6 +57,12 @@ Features
 - API for deployment (`git:from-image`)
     - from_image
 
+- API for SSL (`certs:add`, `certs:generate`, `certs:remove`)
+    - add
+    - generate
+    - remove
+    - has_cert
+
 
 Examples
 --------
@@ -98,6 +104,13 @@ Deploying from a Docker image ::
     app.git.from_image('registry.gitlab.com/group/project:tag')
 
 
+Adding an SSL certificate ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    app = dokku['myapp']
+    app.certs.add('/path/on/dokku-host/server.crt', '/path/on/dokku-host/server.key')
+
+
 Creating a postgres database ::
 
     dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
@@ -136,6 +149,12 @@ Deploying with cli ::
         "method": "image",
         "image": {
           "from": "registry.gitlab.com/group/project:tag"
+        }
+      },
+      "certs": {
+        "add": {
+          "crt": "/path/on/dokku-host/server.crt",
+          "key": "/path/on/dokku-host/server.key"
         }
       },
       "services": [

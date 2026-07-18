@@ -28,6 +28,7 @@ from git import Repo, RemoteProgress
 from dokkupy.plugins.registry import Registry
 from dokkupy.plugins.builder import Builder
 from dokkupy.plugins.git import Git
+from dokkupy.plugins.certs import Certs
 
 
 def safe_log(command):
@@ -212,9 +213,11 @@ class Dokku(Command):
                 current_branch=config.get('current_branch', False),
             )
 
-        generate_cert = config.get('generate_cert', False)
-        if generate_cert:
-            app.generate_certs(**config.get('cert'))
+        certs_config = config.get('certs')
+        if certs_config:
+            app.certs.apply_config(certs_config)
+        elif config.get('generate_cert', False):
+            app.certs.generate(**config.get('cert', {}))
 
         disable_proxy = config.get('disable_proxy', False)
         if disable_proxy:
@@ -281,6 +284,7 @@ class App(object):
         self.dokku = dokku
         self.builder = Builder(self)
         self.git = Git(self)
+        self.certs = Certs(self)
 
     def create(self):
         self.dokku.run('apps:create', self.name)
@@ -317,27 +321,17 @@ class App(object):
 
     def generate_certs(self, country, state, city, company,
                        section, email, password, opt_company):
-        domain = '{}.{}'.format(self.name, self.dokku.hostname_only)
-        inputs = [country,
-                  state,
-                  city,
-                  company,
-                  section,
-                  domain,
-                  email,
-                  password,
-                  opt_company
-        ]
-        inputs = ''.join([i+'\n' for i in inputs])
-        self.dokku.run('certs:generate', self.name, domain, input=inputs)
+        return self.certs.generate(
+            country, state, city, company,
+            section, email, password, opt_company,
+        )
 
     @property
     def has_cert(self):
-        output = self.dokku.run('certs:report', self.name)
-        return 'Ssl enabled:         true' in output
+        return self.certs.has_cert
 
     def remove_cert(self):
-        self.dokku.run('certs:remove', self.name)
+        return self.certs.remove()
 
     def __nonzero__(self):
         return bool([app for app in list(self.dokku) if app.name == self.name])
