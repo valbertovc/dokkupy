@@ -25,6 +25,8 @@ import time
 
 from git import Repo, RemoteProgress
 
+from dokkupy.plugins.registry import Registry
+
 
 def safe_log(command):
     result = []
@@ -35,12 +37,6 @@ def safe_log(command):
             part = '******'
         result.append(part)
     return result
-
-
-def resolve_config_value(value):
-    if isinstance(value, dict) and 'env' in value:
-        return os.environ[value['env']]
-    return value
 
 
 class CommandError(Exception):
@@ -112,39 +108,6 @@ class Command(object):
         return [self.name] + list(self.params) + list(extra_params)
 
 
-class Registry(object):
-    def __init__(self, dokku):
-        self.dokku = dokku
-
-    def login(self, server, username, password=None, *, global_=False,
-              password_stdin=False, app=None):
-        args = ['registry:login']
-        if global_:
-            args.append('--global')
-        elif app:
-            args.append(app)
-        if password_stdin:
-            args.append('--password-stdin')
-        args.extend([server, username])
-        kwargs = {}
-        if password_stdin:
-            kwargs['input'] = password
-        elif password is not None:
-            args.append(password)
-        return self.dokku.run(*args, **kwargs)
-
-    def set(self, key, value=None, *, global_=False, app=None):
-        args = ['registry:set']
-        if global_:
-            args.append('--global')
-        elif app:
-            args.append(app)
-        args.append(key)
-        if value is not None:
-            args.append(str(value))
-        return self.dokku.run(*args)
-
-
 class Dokku(Command):
     def __init__(self, hostname=None, ssh_port=22):
         if hostname:
@@ -164,42 +127,6 @@ class Dokku(Command):
             self.ssh_port = ssh_port
         super(Dokku, self).__init__(*cmd)
         self.registry = Registry(self)
-
-    def _apply_registry_config(self, registry_config, app_name):
-        login = registry_config.get('login')
-        if login:
-            global_login = login.get('global', False)
-            app = login.get('app')
-            if not global_login and app is None:
-                app = app_name
-            password = resolve_config_value(login.get('password'))
-            self.registry.login(
-                login['server'],
-                login['username'],
-                password=password,
-                global_=global_login,
-                password_stdin=login.get('password_stdin', False),
-                app=app if not global_login else None,
-            )
-
-        set_config = registry_config.get('set')
-        if set_config:
-            global_set = set_config.get('global', False)
-            app = set_config.get('app')
-            if not global_set and app is None:
-                app = app_name
-            for key, value in set_config.items():
-                if key in ('global', 'app'):
-                    continue
-                if value == '' or value is None:
-                    self.registry.set(key, global_=global_set, app=app)
-                else:
-                    self.registry.set(
-                        key,
-                        resolve_config_value(value),
-                        global_=global_set,
-                        app=app,
-                    )
 
     def _list(self):
         output = self.run('apps:list')
@@ -266,7 +193,7 @@ class Dokku(Command):
 
         registry_config = config.get('registry')
         if registry_config:
-            self._apply_registry_config(registry_config, name)
+            self.registry.apply_config(registry_config, name)
 
         app.deploy(project_path=config.get('path'), current_branch=config.get('current_branch', False))
 
