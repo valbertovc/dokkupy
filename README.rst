@@ -10,6 +10,7 @@ Install ::
 
 Requires ::
 
+    Python >= 3.10
     GitPython>=3.1.30
 
 Debugging ::

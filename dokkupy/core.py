@@ -26,9 +26,6 @@ import time
 from git import Repo, RemoteProgress
 
 
-PY3 = sys.version_info.major == 3
-
-
 def safe_log(command):
     result = []
     words = ['password', 'key', 'secret']
@@ -81,15 +78,14 @@ class Command(object):
 
         input = kwargs.get('input')
 
-        if input and PY3:
-            input = input.encode(sys.getdefaultencoding())
-
         stdin = subprocess.PIPE if input else None
         start = time.time()
         p = subprocess.Popen(cmd,
                              stdin=stdin,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
+                             text=True,
+                             encoding=sys.getdefaultencoding(),
                              **self.popen_kwargs)
 
         stdout, stderr = p.communicate(input)
@@ -104,8 +100,6 @@ class Command(object):
                 raise CommandError('Error: {}'.format(stderr))
             raise CommandError('Error: {}'.format(p.returncode))
 
-        if PY3:
-            stdout = stdout.decode(sys.getdefaultencoding())
         return stdout
 
     def get_command(self, *extra_params):
