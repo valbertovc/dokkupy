@@ -26,6 +26,7 @@ import time
 from git import Repo, RemoteProgress
 
 from dokkupy.plugins.registry import Registry
+from dokkupy.plugins.builder import Builder
 
 
 def safe_log(command):
@@ -195,6 +196,12 @@ class Dokku(Command):
         if registry_config:
             self.registry.apply_config(registry_config, name)
 
+        builder_config = config.get('builder')
+        if builder_config:
+            set_config = builder_config.get('set')
+            if set_config:
+                app.builder.apply_config(set_config)
+
         app.deploy(project_path=config.get('path'), current_branch=config.get('current_branch', False))
 
         generate_cert = config.get('generate_cert', False)
@@ -264,6 +271,7 @@ class App(object):
     def __init__(self, name, dokku):
         self.name = name
         self.dokku = dokku
+        self.builder = Builder(self)
 
     def create(self):
         self.dokku.run('apps:create', self.name)

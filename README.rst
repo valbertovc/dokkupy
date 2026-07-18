@@ -51,6 +51,9 @@ Features
     - login
     - set
 
+- API for builder (`builder:set`)
+    - set
+
 
 Examples
 --------
@@ -76,6 +79,13 @@ Logging into a Docker registry ::
     )
     dokku.registry.set('server', 'registry.gitlab.com', app='myapp')
     dokku.registry.set('image-repo', 'group/project', app='myapp')
+
+
+Setting the builder for an app ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    app = dokku['myapp']
+    app.builder.set('selected', 'dockerfile')
 
 
 Creating a postgres database ::
@@ -105,6 +115,11 @@ Deploying with cli ::
         "set": {
           "server": "registry.gitlab.com",
           "image-repo": "group/project"
+        }
+      },
+      "builder": {
+        "set": {
+          "selected": "dockerfile"
         }
       },
       "services": [
