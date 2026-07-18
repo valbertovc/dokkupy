@@ -3,11 +3,14 @@ dokkupy - Python API and script for dokku
 
 Install ::
 
+    pip install dokkupy
+
+    # or from source
     pip install git+https://github.com/fenrrir/dokkupy.git
 
 Requires ::
 
-    'GitPython==2.1.0'
+    GitPython>=3.1.30
 
 Debugging ::
 
@@ -85,4 +88,4 @@ Deploying with cli ::
         "worker": 1
     }
     $ cd <project path>
-    $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net create
+    $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net deploy
