@@ -1,4 +1,4 @@
-from dokkupy.plugins.registry import resolve_config_value
+from dokkupy.utils import resolve_config_value
 
 
 class Builder(object):
