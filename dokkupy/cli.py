@@ -25,6 +25,12 @@ def main():
     parser = argparse.ArgumentParser(description='Deploy on dokku with dokkupy')
     parser.add_argument('--project-name', required=True, help='project name')
     parser.add_argument('--address', required=True, help='address of dokku instance')
+    parser.add_argument(
+        '--ssh-port',
+        type=int,
+        default=22,
+        help='SSH port for the dokku remote server (default: 22)',
+    )
     parser.add_argument('--config', required=True, help='config file')
     parser.add_argument(
         '--destroy-app',
@@ -35,7 +41,7 @@ def main():
 
     args = parser.parse_args()
 
-    dokku = dokkupy.Dokku(args.address)
+    dokku = dokkupy.Dokku(args.address, ssh_port=args.ssh_port)
     if args.command == 'deploy':
         dokku.deploy_from_file(
             args.project_name,

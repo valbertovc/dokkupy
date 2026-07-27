@@ -25,8 +25,10 @@ import time
 
 from git import Repo, RemoteProgress
 
-
-PY3 = sys.version_info.major == 3
+from dokkupy.plugins.registry import Registry
+from dokkupy.plugins.builder import Builder
+from dokkupy.plugins.git import Git
+from dokkupy.plugins.certs import Certs
 
 
 def safe_log(command):
@@ -81,15 +83,14 @@ class Command(object):
 
         input = kwargs.get('input')
 
-        if input and PY3:
-            input = input.encode(sys.getdefaultencoding())
-
         stdin = subprocess.PIPE if input else None
         start = time.time()
         p = subprocess.Popen(cmd,
                              stdin=stdin,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
+                             text=True,
+                             encoding=sys.getdefaultencoding(),
                              **self.popen_kwargs)
 
         stdout, stderr = p.communicate(input)
@@ -104,8 +105,6 @@ class Command(object):
                 raise CommandError('Error: {}'.format(stderr))
             raise CommandError('Error: {}'.format(p.returncode))
 
-        if PY3:
-            stdout = stdout.decode(sys.getdefaultencoding())
         return stdout
 
     def get_command(self, *extra_params):
@@ -113,13 +112,24 @@ class Command(object):
 
 
 class Dokku(Command):
-    def __init__(self, hostname=None):
+    def __init__(self, hostname=None, ssh_port=22):
         if hostname:
-            cmd = ['ssh', '-t', '-t', hostname]
+            if not isinstance(ssh_port, int) or not (1 <= ssh_port <= 65535):
+                raise ValueError(
+                    'ssh_port must be an integer between 1 and 65535'
+                )
+            cmd = ['ssh', '-t', '-t']
+            if ssh_port != 22:
+                cmd.extend(['-p', str(ssh_port)])
+            cmd.append(hostname)
             self.hostname = hostname
+            self.ssh_port = ssh_port
         else:
             cmd = ['dokku']
+            self.hostname = None
+            self.ssh_port = ssh_port
         super(Dokku, self).__init__(*cmd)
+        self.registry = Registry(self)
 
     def _list(self):
         output = self.run('apps:list')
@@ -184,11 +194,30 @@ class Dokku(Command):
             if scale != app.get_scale():
                 app.set_scale(**scale)
 
-        app.deploy(project_path=config.get('path'), current_branch=config.get('current_branch', False))
+        registry_config = config.get('registry')
+        if registry_config:
+            self.registry.apply_config(registry_config, name)
 
-        generate_cert = config.get('generate_cert', False)
-        if generate_cert:
-            app.generate_certs(**config.get('cert'))
+        builder_config = config.get('builder')
+        if builder_config:
+            set_config = builder_config.get('set')
+            if set_config:
+                app.builder.apply_config(set_config)
+
+        deployment_config = config.get('deployment', {})
+        if deployment_config.get('method') == 'image':
+            app.git.apply_config(deployment_config)
+        else:
+            app.deploy(
+                project_path=config.get('path'),
+                current_branch=config.get('current_branch', False),
+            )
+
+        certs_config = config.get('certs')
+        if certs_config:
+            app.certs.apply_config(certs_config)
+        elif config.get('generate_cert', False):
+            app.certs.generate(**config.get('cert', {}))
 
         disable_proxy = config.get('disable_proxy', False)
         if disable_proxy:
@@ -239,11 +268,23 @@ class Dokku(Command):
             return self.hostname.split('@')[1]
         return self.hostname
 
+    def git_remote_url(self, app_name):
+        if self.ssh_port == 22:
+            return '{}:{}'.format(self.hostname, app_name)
+        return 'ssh://{}:{}/{}'.format(
+            self.hostname,
+            self.ssh_port,
+            app_name,
+        )
+
 
 class App(object):
     def __init__(self, name, dokku):
         self.name = name
         self.dokku = dokku
+        self.builder = Builder(self)
+        self.git = Git(self)
+        self.certs = Certs(self)
 
     def create(self):
         self.dokku.run('apps:create', self.name)
@@ -280,27 +321,17 @@ class App(object):
 
     def generate_certs(self, country, state, city, company,
                        section, email, password, opt_company):
-        domain = '{}.{}'.format(self.name, self.dokku.hostname_only)
-        inputs = [country,
-                  state,
-                  city,
-                  company,
-                  section,
-                  domain,
-                  email,
-                  password,
-                  opt_company
-        ]
-        inputs = ''.join([i+'\n' for i in inputs])
-        self.dokku.run('certs:generate', self.name, domain, input=inputs)
+        return self.certs.generate(
+            country, state, city, company,
+            section, email, password, opt_company,
+        )
 
     @property
     def has_cert(self):
-        output = self.dokku.run('certs:report', self.name)
-        return 'Ssl enabled:         true' in output
+        return self.certs.has_cert
 
     def remove_cert(self):
-        self.dokku.run('certs:remove', self.name)
+        return self.certs.remove()
 
     def __nonzero__(self):
         return bool([app for app in list(self.dokku) if app.name == self.name])
@@ -351,7 +382,7 @@ class App(object):
         repo = Repo(project_path)
 
         if not remote_url:
-            remote_url = self.dokku.hostname + ':' + self.name
+            remote_url = self.dokku.git_remote_url(self.name)
         if remote_name not in [r.name for r in repo.remotes]:
             remote = repo.create_remote(remote_name, remote_url)
         else:

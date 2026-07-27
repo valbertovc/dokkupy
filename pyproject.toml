@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dokkupy"
+version = "0.10.0"
+description = "Python API and script for dokku"
+readme = "README.rst"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+requires-python = ">=3.10"
+authors = [
+    { name = "Rodrigo Pinheiro Marques de Araújo", email = "fenrrir@gmail.com" },
+]
+keywords = ["python", "dokkupy", "dokku"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Systems Administration",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "GitPython>=3.1.30",
+]
+
+[project.urls]
+Homepage = "https://github.com/fenrrir/dokkupy"
+Repository = "https://github.com/fenrrir/dokkupy.git"
+Issues = "https://github.com/fenrrir/dokkupy/issues"
+
+[project.scripts]
+dokkupycli = "dokkupy.cli:main"

@@ -3,11 +3,15 @@ dokkupy - Python API and script for dokku
 
 Install ::
 
+    pip install dokkupy
+
+    # or from source
     pip install git+https://github.com/fenrrir/dokkupy.git
 
 Requires ::
 
-    'GitPython==2.1.0'
+    Python >= 3.10
+    GitPython>=3.1.30
 
 Debugging ::
 
@@ -43,6 +47,22 @@ Features
     - unlink
     - links
 
+- API for registry (`registry:login`, `registry:set`)
+    - login
+    - set
+
+- API for builder (`builder:set`)
+    - set
+
+- API for deployment (`git:from-image`)
+    - from_image
+
+- API for SSL (`certs:add`, `certs:generate`, `certs:remove`)
+    - add
+    - generate
+    - remove
+    - has_cert
+
 
 Examples
 --------
@@ -53,6 +73,42 @@ Stopping a application ::
     apps = list(dokku)
     first_app = apps[0]
     first_app.stop()
+
+
+Connecting on a non-default SSH port ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net', ssh_port=2222)
+
+
+Logging into a Docker registry ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    dokku.registry.login(
+        'registry.gitlab.com', 'gitlab-ci-token', 'password', global_=True,
+    )
+    dokku.registry.set('server', 'registry.gitlab.com', app='myapp')
+    dokku.registry.set('image-repo', 'group/project', app='myapp')
+
+
+Setting the builder for an app ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    app = dokku['myapp']
+    app.builder.set('selected', 'dockerfile')
+
+
+Deploying from a Docker image ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    app = dokku['myapp']
+    app.git.from_image('registry.gitlab.com/group/project:tag')
+
+
+Adding an SSL certificate ::
+
+    dokku = dokkupy.Dokku('dokku@mydokkuhost.net')
+    app = dokku['myapp']
+    app.certs.add('/path/on/dokku-host/server.crt', '/path/on/dokku-host/server.key')
 
 
 Creating a postgres database ::
@@ -72,6 +128,35 @@ Deploying with cli ::
 
     $ cat config-example.json
     {
+      "registry": {
+        "login": {
+          "global": true,
+          "server": "registry.gitlab.com",
+          "username": "gitlab-ci-token",
+          "password": {"env": "CI_REGISTRY_PASSWORD"}
+        },
+        "set": {
+          "server": "registry.gitlab.com",
+          "image-repo": "group/project"
+        }
+      },
+      "builder": {
+        "set": {
+          "selected": "dockerfile"
+        }
+      },
+      "deployment": {
+        "method": "image",
+        "image": {
+          "from": "registry.gitlab.com/group/project:tag"
+        }
+      },
+      "certs": {
+        "add": {
+          "crt": "/path/on/dokku-host/server.crt",
+          "key": "/path/on/dokku-host/server.key"
+        }
+      },
       "services": [
         {
           "name": "postgres",
@@ -85,4 +170,5 @@ Deploying with cli ::
         "worker": 1
     }
     $ cd <project path>
-    $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net create
+    $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net deploy
+    $ dokkupycli --project-name mydeploy --config config-example.json --address dokku@mydokkuhost.net --ssh-port 2222 deploy
